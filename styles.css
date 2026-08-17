@@ -843,13 +843,16 @@ button {
 
 .photo-caption {
   position: absolute;
-  right: -28px;
-  bottom: 70px;
+  right: clamp(14px, 2vw, 28px);
+  bottom: clamp(32px, 5vw, 70px);
+  max-width: calc(100% - 28px);
   padding: 11px 22px;
   color: white;
   background: var(--blue);
   font-size: 11px;
   font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
   text-transform: uppercase;
   letter-spacing: 0.17em;
   transform: rotate(-5deg);
@@ -1449,6 +1452,16 @@ button {
     min-height: 580px;
     order: 2;
     border-radius: 180px 180px 8px 8px;
+  }
+
+  .photo-caption {
+    right: 12px;
+    bottom: 36px;
+    max-width: calc(100% - 24px);
+    padding: 10px 16px;
+    font-size: 10px;
+    letter-spacing: 0.13em;
+    transform: rotate(-3deg);
   }
 
   .process-copy {
