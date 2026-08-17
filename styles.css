@@ -633,11 +633,29 @@ button {
 }
 
 .program {
+  overflow: hidden;
   color: var(--paper-light);
   background:
     radial-gradient(circle at 90% 6%, rgba(255, 255, 255, 0.09), transparent 24%),
     radial-gradient(circle at 4% 94%, rgba(255, 0, 0, 0.17), transparent 27%),
     var(--ink);
+}
+
+.program::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  opacity: 0.13;
+  background-image: url("assets/goose-pattern-black.png");
+  background-position: center top;
+  background-repeat: repeat;
+  background-size: clamp(330px, 32vw, 520px) auto;
+}
+
+.program > * {
+  position: relative;
+  z-index: 1;
 }
 
 .program .section-heading h2 em { color: var(--red); }
@@ -826,32 +844,6 @@ button {
   text-transform: none;
   letter-spacing: 0;
 }
-
-.goose-pattern-break {
-  display: grid;
-  height: clamp(190px, 17vw, 290px);
-  overflow: hidden;
-  grid-template-columns: 1.15fr 0.9fr 0.75fr;
-  border-top: 1px solid var(--ink);
-  border-bottom: 1px solid var(--ink);
-}
-
-.goose-pattern-break span {
-  display: block;
-  min-width: 0;
-  border-right: 1px solid var(--ink);
-  background-position: center;
-  background-repeat: repeat;
-  background-size: clamp(300px, 31vw, 500px) auto;
-}
-
-.goose-pattern-break span:last-child {
-  border-right: 0;
-}
-
-.pattern-gray { background-image: url("assets/goose-pattern-gray.png"); }
-.pattern-black { background-image: url("assets/goose-pattern-black.png"); }
-.pattern-red { background-image: url("assets/goose-pattern-red.png"); }
 
 .process {
   display: grid;
@@ -1436,22 +1428,14 @@ button {
     display: none;
   }
 
-  .goose-pattern-break {
-    height: 165px;
-    grid-template-columns: 1fr 0.8fr;
-  }
-
-  .goose-pattern-break span {
-    background-size: 310px auto;
-  }
-
-  .goose-pattern-break .pattern-black {
-    display: none;
-  }
-
   .results::before {
     opacity: 0.04;
     background-size: 360px auto;
+  }
+
+  .program::before {
+    opacity: 0.1;
+    background-size: 320px auto;
   }
 
   .manifesto {
