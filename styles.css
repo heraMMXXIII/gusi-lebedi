@@ -1,11 +1,11 @@
 :root {
-  --paper: #f3eddf;
-  --paper-light: #fffaf0;
-  --ink: #161513;
-  --red: #dd2f28;
-  --blue: #173fba;
-  --yellow: #f4c834;
-  --line: rgba(22, 21, 19, 0.22);
+  --paper: #e6e7e8;
+  --paper-light: #ffffff;
+  --ink: #000000;
+  --red: #ff0000;
+  --blue: #000000;
+  --yellow: #e6e7e8;
+  --line: rgba(0, 0, 0, 0.22);
   --serif: "Iowan Old Style", "Baskerville", "Times New Roman", serif;
   --sans: "Arial Narrow", "Avenir Next Condensed", "Helvetica Neue", sans-serif;
 }
@@ -34,7 +34,7 @@ body::before {
   inset: 0;
   z-index: 20;
   pointer-events: none;
-  opacity: 0.14;
+  opacity: 0.07;
   content: "";
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.92' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.16'/%3E%3C/svg%3E");
   mix-blend-mode: multiply;
@@ -111,7 +111,7 @@ button {
 .site-header.is-scrolled {
   height: 78px;
   border-color: var(--line);
-  background: rgba(243, 237, 223, 0.93);
+  background: rgba(230, 231, 232, 0.94);
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
 }
@@ -128,7 +128,8 @@ button {
   height: 70px;
   overflow: hidden;
   place-items: center;
-  background: var(--paper);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: white;
 }
 
 .brand-mark img {
@@ -209,7 +210,7 @@ button {
   position: relative;
   height: 205svh;
   background:
-    radial-gradient(circle at 77% 42%, rgba(244, 200, 52, 0.24) 0 18%, transparent 18.3%),
+    radial-gradient(circle at 77% 42%, rgba(255, 0, 0, 0.08) 0 18%, transparent 18.3%),
     var(--paper);
 }
 
@@ -390,24 +391,6 @@ button {
   mix-blend-mode: multiply;
 }
 
-.scribble-star {
-  position: absolute;
-  top: 4%;
-  left: 2%;
-  width: 118px;
-  color: var(--yellow);
-  filter: drop-shadow(6px 7px 0 var(--ink));
-  transform: rotate(-12deg);
-  animation: star-wiggle 3.6s ease-in-out infinite;
-}
-
-.scribble-star svg {
-  fill: currentColor;
-  stroke: var(--ink);
-  stroke-linejoin: round;
-  stroke-width: 3;
-}
-
 .clay-stamp {
   position: absolute;
   right: 0;
@@ -512,6 +495,39 @@ button {
   padding: clamp(90px, 10vw, 170px) clamp(22px, 6vw, 100px);
 }
 
+.brand-band {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1.25fr 1.65fr 1fr;
+  color: white;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+  background: var(--ink);
+}
+
+.brand-band span {
+  display: grid;
+  min-height: 72px;
+  place-items: center;
+  padding: 18px 24px;
+  border-right: 1px solid rgba(255, 255, 255, 0.38);
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+}
+
+.brand-band span:nth-child(2) {
+  color: white;
+  background: var(--red);
+}
+
+.brand-band span:last-child {
+  border-right: 0;
+}
+
 .manifesto {
   display: grid;
   min-height: 820px;
@@ -520,7 +536,7 @@ button {
   gap: 30px;
   overflow: hidden;
   background:
-    radial-gradient(circle at 94% 80%, rgba(244, 200, 52, 0.2) 0 13%, transparent 13.2%),
+    radial-gradient(circle at 94% 80%, rgba(255, 0, 0, 0.07) 0 13%, transparent 13.2%),
     var(--paper);
 }
 
@@ -576,8 +592,8 @@ button {
   padding: 38px 24px 27px;
   border: 2px solid var(--ink);
   border-radius: 48% 52% 44% 56% / 50% 44% 56% 50%;
-  background: var(--yellow);
-  box-shadow: 11px 11px 0 var(--blue), 16px 16px 0 var(--red);
+  background: var(--paper-light);
+  box-shadow: 11px 11px 0 var(--ink), 16px 16px 0 var(--red);
   text-align: center;
   transform: rotate(5deg);
 }
@@ -606,17 +622,6 @@ button {
   font-weight: 400;
 }
 
-.freedom-star {
-  position: absolute;
-  top: -25px;
-  right: 24px;
-  z-index: 2;
-  color: var(--blue);
-  font-size: 62px;
-  line-height: 1;
-  text-shadow: 2px 2px 0 var(--paper-light);
-}
-
 .freedom-sign {
   position: relative;
   z-index: 1;
@@ -630,12 +635,12 @@ button {
 .program {
   color: var(--paper-light);
   background:
-    radial-gradient(circle at 90% 6%, rgba(244, 200, 52, 0.12), transparent 24%),
-    radial-gradient(circle at 4% 94%, rgba(227, 43, 41, 0.12), transparent 27%),
+    radial-gradient(circle at 90% 6%, rgba(255, 255, 255, 0.09), transparent 24%),
+    radial-gradient(circle at 4% 94%, rgba(255, 0, 0, 0.17), transparent 27%),
     var(--ink);
 }
 
-.program .section-heading h2 em { color: var(--yellow); }
+.program .section-heading h2 em { color: var(--red); }
 
 .section-heading {
   display: grid;
@@ -716,7 +721,7 @@ button {
 .card-cobalt { --accent: var(--blue); }
 .card-red { --accent: var(--red); }
 .card-yellow { --accent: var(--yellow); }
-.card-ivory { --accent: #7d985d; }
+.card-ivory { --accent: var(--ink); }
 
 .program-number {
   position: absolute;
@@ -739,8 +744,9 @@ button {
 }
 
 .card-yellow .program-number {
-  color: var(--ink);
-  border-color: rgba(22, 21, 19, 0.35);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.72);
+  background: var(--red);
 }
 
 .program-media {
@@ -850,7 +856,7 @@ button {
   max-width: calc(100% - 28px);
   padding: 11px 22px;
   color: white;
-  background: var(--blue);
+  background: var(--ink);
   font-size: 11px;
   font-weight: 800;
   line-height: 1.2;
@@ -934,7 +940,7 @@ button {
 
 .results {
   overflow: hidden;
-  background: var(--yellow);
+  background: var(--paper);
 }
 
 .results-heading {
@@ -948,7 +954,7 @@ button {
 }
 
 .results h2 em {
-  color: var(--blue);
+  color: var(--red);
 }
 
 .result-objects {
@@ -973,7 +979,7 @@ button {
 .object-card:nth-child(2) {
   min-height: 470px;
   color: white;
-  background: var(--blue);
+  background: var(--ink);
   transform: rotate(3deg);
 }
 
@@ -1040,7 +1046,7 @@ button {
   right: 2%;
   bottom: -27%;
   width: min(30vw, 410px);
-  border-color: rgba(244, 200, 52, 0.82);
+  border-color: rgba(255, 255, 255, 0.82);
   border-style: dashed;
 }
 
@@ -1052,7 +1058,7 @@ button {
 }
 
 .cta h2 em {
-  color: var(--yellow);
+  color: white;
 }
 
 .cta-note {
@@ -1072,16 +1078,8 @@ button {
 }
 
 .button-light:hover {
-  background: var(--yellow);
-}
-
-.cta-star {
-  position: absolute;
-  top: 10%;
-  left: 11%;
-  color: var(--yellow);
-  font-size: 110px;
-  animation: star-wiggle 4s ease-in-out infinite;
+  color: white;
+  background: var(--ink);
 }
 
 .site-footer {
@@ -1156,7 +1154,6 @@ button {
 }
 
 @keyframes slow-spin { to { transform: rotate(360deg); } }
-@keyframes star-wiggle { 0%, 100% { transform: rotate(-12deg) scale(1); } 50% { transform: rotate(-4deg) scale(1.06); } }
 
 @media (max-width: 1100px) {
   .hero-sticky {
@@ -1272,7 +1269,7 @@ button {
     gap: 20px;
     opacity: 0;
     color: white;
-    background: var(--blue);
+    background: var(--ink);
     font-family: var(--serif);
     font-size: 36px;
     font-weight: 400;
@@ -1289,7 +1286,7 @@ button {
   .nav-cta {
     margin-top: 20px;
     color: var(--ink);
-    background: var(--yellow);
+    background: white;
     font-family: var(--sans);
     font-size: 11px;
     letter-spacing: 0.13em;
@@ -1303,7 +1300,7 @@ button {
   .hero {
     height: 185svh;
     background:
-      radial-gradient(circle at 54% 69%, rgba(244, 200, 52, 0.26) 0 25%, transparent 25.3%),
+      radial-gradient(circle at 54% 69%, rgba(255, 0, 0, 0.09) 0 25%, transparent 25.3%),
       var(--paper);
   }
 
@@ -1363,12 +1360,6 @@ button {
     width: min(90vw, 500px);
   }
 
-  .scribble-star {
-    top: 2%;
-    left: 13%;
-    width: 80px;
-  }
-
   .clay-stamp {
     display: none;
   }
@@ -1386,6 +1377,21 @@ button {
   }
   .section {
     padding: 92px 18px;
+  }
+
+  .brand-band {
+    grid-template-columns: 1fr;
+  }
+
+  .brand-band span {
+    min-height: 54px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.38);
+    font-size: 9px;
+  }
+
+  .brand-band span:last-child {
+    display: none;
   }
 
   .manifesto {
@@ -1499,12 +1505,6 @@ button {
     min-height: 700px;
     padding-top: 110px;
     padding-bottom: 180px;
-  }
-
-  .cta-star {
-    top: 2%;
-    left: 3%;
-    font-size: 70px;
   }
 
   .site-footer {
