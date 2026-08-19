@@ -722,7 +722,7 @@ button {
 }
 
 .program-card:nth-child(1),
-.program-card:nth-child(4) {
+.program-card:nth-child(3) {
   min-height: 580px;
   grid-column: span 7;
   grid-template-columns: minmax(0, 1.45fr) minmax(230px, 0.78fr);
@@ -730,11 +730,12 @@ button {
   align-items: stretch;
 }
 
-.program-card:nth-child(4) {
+.program-card:nth-child(3) {
+  grid-column: 1 / -1;
   grid-template-columns: minmax(230px, 0.78fr) minmax(0, 1.45fr);
 }
 
-.program-card:nth-child(4) .program-media { order: 2; }
+.program-card:nth-child(3) .program-media { order: 2; }
 
 .card-cobalt { --accent: var(--blue); }
 .card-red { --accent: var(--red); }
@@ -776,7 +777,7 @@ button {
 }
 
 .program-card:nth-child(2) .program-media,
-.program-card:nth-child(4) .program-media { border-radius: 110px 6px 6px 6px; }
+.program-card:nth-child(3) .program-media { border-radius: 110px 6px 6px 6px; }
 
 .program-media img {
   position: absolute;
@@ -794,10 +795,9 @@ button {
   transform: scale(1.035);
 }
 
-.program-card:nth-child(1) .program-media img { object-position: 50% 48%; }
-.program-card:nth-child(2) .program-media img { object-position: 50% 27%; }
+.program-card:nth-child(1) .program-media img { object-position: 50% 27%; }
+.program-card:nth-child(2) .program-media img { object-position: 50% 48%; }
 .program-card:nth-child(3) .program-media img { object-position: 50% 48%; }
-.program-card:nth-child(4) .program-media img { object-position: 50% 50%; }
 
 .program-media::after {
   position: absolute;
@@ -1014,20 +1014,18 @@ button {
   min-height: 470px;
   color: white;
   background: var(--ink);
-  transform: rotate(3deg);
 }
 
 .object-card:nth-child(3) {
   background: var(--red);
-  transform: rotate(-3deg);
 }
 
-.result-objects .object-card:hover { transform: translateY(-15px) rotate(-2deg); }
-.result-objects .object-card:nth-child(2):hover { transform: translateY(-15px) rotate(1deg); }
-.result-objects .object-card:nth-child(3):hover { transform: translateY(-15px) rotate(-1deg); }
+@media (min-width: 781px) and (hover: hover) and (pointer: fine) {
+  .result-objects .object-card:hover { transform: translateY(-15px); }
 
-.result-objects .object-card:hover {
-  box-shadow: 0 24px 46px rgba(22, 21, 19, 0.2);
+  .result-objects .object-card:hover {
+    box-shadow: 0 24px 46px rgba(22, 21, 19, 0.2);
+  }
 }
 
 .object-card img {
@@ -1229,14 +1227,14 @@ button {
 
   .program-card,
   .program-card:nth-child(1),
-  .program-card:nth-child(4) {
+  .program-card:nth-child(3) {
     min-height: 560px;
     grid-column: span 1;
     grid-template-columns: 1fr;
     grid-template-rows: minmax(330px, 1fr) auto;
   }
 
-  .program-card:nth-child(4) .program-media {
+  .program-card:nth-child(3) .program-media {
     order: 0;
   }
 
@@ -1476,7 +1474,7 @@ button {
 
   .program-card,
   .program-card:nth-child(1),
-  .program-card:nth-child(4) {
+  .program-card:nth-child(3) {
     min-height: 0;
     grid-template-rows: minmax(300px, 62vw) auto;
     padding: 14px;
@@ -1490,7 +1488,7 @@ button {
   .program-number { top: 28px; left: 28px; }
   .program-media,
   .program-card:nth-child(2) .program-media,
-  .program-card:nth-child(4) .program-media { border-radius: 5px 78px 5px 5px; }
+  .program-card:nth-child(3) .program-media { border-radius: 5px 78px 5px 5px; }
   .program-copy { padding: 16px 8px 10px; }
   .program-card .program-description { margin-top: 18px; font-size: 16px; }
 
