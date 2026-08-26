@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <meta name="theme-color" content="#173fba" />
+    <title>Гуси-Лебеди — вход для персонала</title>
+    <link rel="icon" href="assets/gusi-lebedi-logo.png" />
+    <link rel="stylesheet" href="login.css" />
+    <script src="login.js" defer></script>
+  </head>
+  <body>
+    <main class="login-shell">
+      <section class="login-card" aria-labelledby="login-title">
+        <a class="login-brand" href="index.html" aria-label="Вернуться на сайт Гуси-Лебеди">
+          <img src="assets/gusi-lebedi-logo.png" alt="Гуси-Лебеди" />
+          <span>Творческая<br />мастерская</span>
+        </a>
+
+        <div class="login-copy">
+          <p class="eyebrow">Только для персонала</p>
+          <h1 id="login-title">Вход в<br /><em>мастерскую.</em></h1>
+          <p>Здесь команда меняет фотографии сайта. Для входа нужен пароль персонала.</p>
+        </div>
+
+        <form class="login-form">
+          <label for="staff-password">Пароль</label>
+          <div class="password-row">
+            <input id="staff-password" name="password" type="password" autocomplete="current-password" required autofocus />
+            <button type="submit">Войти <span aria-hidden="true">→</span></button>
+          </div>
+          <p class="login-status" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <aside class="login-art" aria-hidden="true">
+        <span class="art-star">✦</span>
+        <div class="art-orbit"></div>
+        <p>лепим · красим · празднуем</p>
+      </aside>
+    </main>
+  </body>
+</html>

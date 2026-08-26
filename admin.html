@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <meta name="theme-color" content="#173fba" />
+    <title>Гуси-Лебеди — управление фотографиями</title>
+    <link rel="icon" href="assets/gusi-lebedi-logo.png" />
+    <link rel="stylesheet" href="admin.css" />
+    <script src="cms.js?v=3" defer></script>
+    <script src="admin.js" defer></script>
+  </head>
+  <body>
+    <header class="admin-header">
+      <a class="admin-brand" href="index.html" aria-label="Вернуться на сайт">
+        <img src="assets/gusi-lebedi-logo.png" alt="Гуси-Лебеди" />
+        <span>Управление<br />изображениями</span>
+      </a>
+      <div class="admin-header-actions">
+        <a class="view-site" href="index.html" target="_blank" rel="noopener">Открыть сайт ↗</a>
+        <button class="logout-button" type="button">Выйти</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="admin-hero">
+        <p class="eyebrow">Админ-панель мастерской</p>
+        <h1>Меняйте фото.<br /><em>Не трогайте код.</em></h1>
+        <div class="admin-intro">
+          <p>
+            Загрузите изображение в нужный слот — оно сразу появится на сайте и
+            сохранится в общей базе мастерской.
+          </p>
+          <div class="storage-note">
+            <span>Важно</span>
+            <p>Изображения сохраняются на сервере в SQLite и становятся общими для всех посетителей сайта.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="media-section" aria-labelledby="media-title">
+        <div class="media-heading">
+          <div>
+            <p class="eyebrow">Изображения сайта</p>
+            <h2 id="media-title">Выберите слот</h2>
+          </div>
+          <p>JPG, PNG или WebP · до 12 МБ</p>
+        </div>
+        <div class="media-grid" data-media-grid></div>
+      </section>
+    </main>
+
+    <template id="media-card-template">
+      <article class="media-card">
+        <div class="media-preview">
+          <img alt="" />
+          <span class="custom-badge">Заменено</span>
+        </div>
+        <div class="media-card-body">
+          <div>
+            <p class="slot-kicker"></p>
+            <h3></h3>
+            <p class="slot-description"></p>
+          </div>
+          <div class="media-actions">
+            <label class="upload-button">
+              <input type="file" accept="image/jpeg,image/png,image/webp" />
+              <span>Загрузить фото</span>
+            </label>
+            <button class="reset-button" type="button">Вернуть исходное</button>
+          </div>
+          <p class="card-status" role="status" aria-live="polite"></p>
+        </div>
+      </article>
+    </template>
+  </body>
+</html>

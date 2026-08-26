@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /login.html
+Disallow: /api/
+Disallow: /data/
+Disallow: /sources/
+
+Sitemap: https://gusilebedy.ru/sitemap.xml
