@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex, nofollow, noarchive" />
     <meta name="theme-color" content="#173fba" />
-    <title>Гуси-Лебеди — управление фотографиями</title>
+    <title>Гуси-Лебеди — управление сайтом</title>
     <link rel="icon" href="assets/gusi-lebedi-logo.png" />
     <link rel="stylesheet" href="admin.css" />
     <script src="cms.js?v=3" defer></script>
@@ -15,7 +15,7 @@
     <header class="admin-header">
       <a class="admin-brand" href="index.html" aria-label="Вернуться на сайт">
         <img src="assets/gusi-lebedi-logo.png" alt="Гуси-Лебеди" />
-        <span>Управление<br />изображениями</span>
+        <span>Управление<br />сайтом</span>
       </a>
       <div class="admin-header-actions">
         <a class="view-site" href="index.html" target="_blank" rel="noopener">Открыть сайт ↗</a>
@@ -37,6 +37,37 @@
             <p>Изображения сохраняются на сервере в SQLite и становятся общими для всех посетителей сайта.</p>
           </div>
         </div>
+      </section>
+
+      <section class="settings-section" aria-labelledby="settings-title">
+        <div class="media-heading">
+          <div>
+            <p class="eyebrow">Заявки с сайта</p>
+            <h2 id="settings-title">Куда их присылать</h2>
+          </div>
+          <p class="settings-state" data-telegram-state>Проверяем…</p>
+        </div>
+
+        <form class="settings-form" data-telegram-form>
+          <p class="settings-hint">
+            Заявки приходят сообщением в Telegram. Токен хранится на сервере и на сайте не виден.
+            Где взять оба значения — написано в <code>README.md</code>, раздел «Заявки».
+          </p>
+
+          <div class="settings-row">
+            <label>
+              <span>Токен бота</span>
+              <input type="password" name="token" autocomplete="off" placeholder="123456789:AAH..." required />
+            </label>
+            <label>
+              <span>Chat id получателя</span>
+              <input type="text" name="chatId" inputmode="numeric" autocomplete="off" placeholder="2033329521" required />
+            </label>
+          </div>
+
+          <button class="settings-save" type="submit">Сохранить и проверить</button>
+          <p class="card-status" role="status" aria-live="polite" data-telegram-status></p>
+        </form>
       </section>
 
       <section class="media-section" aria-labelledby="media-title">

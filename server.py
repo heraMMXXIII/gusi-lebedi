@@ -6,10 +6,14 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import secrets
 import sqlite3
 import time
-from datetime import datetime, timezone
+import urllib.error
+import urllib.request
+from datetime import datetime, timedelta, timezone
+from html import escape
 from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -28,6 +32,13 @@ SESSION_LIFETIME = 8 * 60 * 60
 ADMIN_PASSWORD = ""
 SESSIONS: dict[str, float] = {}
 SESSION_LOCK = Lock()
+LOCAL_TIMEZONE = timezone(timedelta(hours=5))  # Тюмень
+TOKEN_PATTERN = re.compile(r"^\d{5,}:[A-Za-z0-9_-]{20,}$")
+CHAT_ID_PATTERN = re.compile(r"^(-?\d{1,32}|@[A-Za-z0-9_]{4,32})$")
+BOOKING_MAX_PER_WINDOW = 5
+BOOKING_WINDOW = 10 * 60
+BOOKING_HISTORY: dict[str, list[float]] = {}
+BOOKING_LOCK = Lock()
 ALLOWED_SLOTS = {
     "hero-object",
     "program-clay",
@@ -62,6 +73,104 @@ def initialize_database() -> None:
             )
             """
         )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+            """
+        )
+
+
+def read_setting(key: str) -> str:
+    with connect_database() as connection:
+        row = connection.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    return row["value"] if row else ""
+
+
+def write_setting(key: str, value: str) -> None:
+    with connect_database() as connection:
+        connection.execute(
+            """
+            INSERT INTO settings (key, value) VALUES (?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value
+            """,
+            (key, value),
+        )
+
+
+def telegram_credentials() -> tuple[str, str]:
+    """Переменные окружения имеют приоритет, иначе берём то, что сохранено в админке."""
+    token = os.environ.get("GUSI_TELEGRAM_TOKEN", "").strip() or read_setting("telegram_token")
+    chat_id = os.environ.get("GUSI_TELEGRAM_CHAT_ID", "").strip() or read_setting("telegram_chat_id")
+    return token, chat_id
+
+
+def telegram_request(token: str, method: str, payload: dict | None = None) -> dict:
+    if not TOKEN_PATTERN.match(token):
+        return {"ok": False, "description": "Токен выглядит неправильно."}
+
+    url = f"https://api.telegram.org/bot{token}/{method}"
+    data = json.dumps(payload or {}).encode("utf-8")
+    request = urllib.request.Request(
+        url,
+        data=data,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            return json.loads(response.read())
+    except urllib.error.HTTPError as error:
+        try:
+            return json.loads(error.read())
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return {"ok": False, "description": f"Telegram ответил {error.code}"}
+    except Exception as error:  # сеть, DNS, таймаут, кодировка — заявка важнее аккуратного типа
+        return {"ok": False, "description": f"Нет связи с Telegram: {error}"}
+
+
+def booking_rate_limit_exceeded(client: str) -> bool:
+    now = time.time()
+    with BOOKING_LOCK:
+        history = [stamp for stamp in BOOKING_HISTORY.get(client, []) if now - stamp < BOOKING_WINDOW]
+        if len(history) >= BOOKING_MAX_PER_WINDOW:
+            BOOKING_HISTORY[client] = history
+            return True
+        history.append(now)
+        BOOKING_HISTORY[client] = history
+    return False
+
+
+def clean_booking_field(value: object, limit: int) -> str:
+    if not isinstance(value, str):
+        return ""
+    return re.sub(r"\s+", " ", value).strip()[:limit]
+
+
+def format_booking_date(value: str) -> str:
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").strftime("%d.%m.%Y")
+    except ValueError:
+        return value
+
+
+def build_booking_message(booking: dict) -> str:
+    lines = [
+        "<b>🎉 Новая заявка с сайта</b>",
+        "",
+        f"<b>Имя:</b> {escape(booking['name'])}",
+        f"<b>Телефон:</b> {escape(booking['phone'])}",
+        f"<b>Формат:</b> {escape(booking['format'])}",
+        f"<b>Дата:</b> {escape(format_booking_date(booking['date']))}",
+        f"<b>Человек:</b> {escape(booking['guests'])}",
+    ]
+    if booking["comment"]:
+        lines.append(f"<b>Комментарий:</b> {escape(booking['comment'])}")
+    stamp = datetime.now(LOCAL_TIMEZONE).strftime("%d.%m.%Y, %H:%M")
+    lines += ["", f"<i>Отправлено {stamp}</i>"]
+    return "\n".join(lines)
 
 
 def initialize_admin_password() -> tuple[str, bool]:
@@ -152,6 +261,25 @@ class WorkshopHandler(SimpleHTTPRequestHandler):
         self.send_json(HTTPStatus.UNAUTHORIZED, {"error": "Требуется вход для персонала."})
         return False
 
+    def read_json_body(self, limit: int = 8192) -> dict | None:
+        try:
+            content_length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            content_length = 0
+        if content_length <= 0 or content_length > limit:
+            return None
+        try:
+            payload = json.loads(self.rfile.read(content_length))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return None
+        return payload if isinstance(payload, dict) else None
+
+    def client_key(self) -> str:
+        forwarded = self.headers.get("X-Forwarded-For", "")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+        return self.client_address[0]
+
     def parse_media_slot(self) -> str | None:
         path = urlparse(self.path).path
         prefix = "/api/media/"
@@ -173,6 +301,20 @@ class WorkshopHandler(SimpleHTTPRequestHandler):
             return
         if path == "/api/health":
             self.send_json(HTTPStatus.OK, {"status": "ok", "storage": "sqlite"})
+            return
+        if path == "/api/admin/telegram":
+            if not self.require_admin_api():
+                return
+            token, chat_id = telegram_credentials()
+            self.send_json(
+                HTTPStatus.OK,
+                {
+                    "configured": bool(token and chat_id),
+                    "chatId": chat_id,
+                    "tokenHint": f"…{token[-6:]}" if token else "",
+                    "fromEnvironment": bool(os.environ.get("GUSI_TELEGRAM_TOKEN", "").strip()),
+                },
+            )
             return
         if path == "/api/admin/session":
             if not self.require_admin_api():
@@ -220,7 +362,13 @@ class WorkshopHandler(SimpleHTTPRequestHandler):
         if path == "/api/admin/logout":
             self.handle_admin_logout()
             return
+        if path == "/api/booking":
+            self.handle_booking()
+            return
         if not self.require_admin_api():
+            return
+        if path == "/api/admin/telegram":
+            self.handle_telegram_settings()
             return
 
         slot = self.parse_media_slot()
@@ -313,6 +461,114 @@ class WorkshopHandler(SimpleHTTPRequestHandler):
             HTTPStatus.OK,
             {"authenticated": True},
             [("Set-Cookie", cookie)],
+        )
+
+    def handle_booking(self) -> None:
+        if booking_rate_limit_exceeded(self.client_key()):
+            self.send_json(
+                HTTPStatus.TOO_MANY_REQUESTS,
+                {"error": "Слишком много заявок подряд. Попробуйте через несколько минут."},
+            )
+            return
+
+        payload = self.read_json_body()
+        if payload is None:
+            self.send_json(HTTPStatus.BAD_REQUEST, {"error": "Некорректная заявка."})
+            return
+
+        booking = {
+            "name": clean_booking_field(payload.get("name"), 100),
+            "phone": clean_booking_field(payload.get("phone"), 40),
+            "format": clean_booking_field(payload.get("format"), 100),
+            "date": clean_booking_field(payload.get("date"), 20),
+            "guests": clean_booking_field(payload.get("guests"), 10),
+            "comment": clean_booking_field(payload.get("comment"), 1000),
+        }
+
+        digits = re.sub(r"\D", "", booking["phone"])
+        required = all(booking[field] for field in ("name", "phone", "format", "date", "guests"))
+        if not required or len(digits) < 10:
+            self.send_json(HTTPStatus.BAD_REQUEST, {"error": "Заполнены не все поля заявки."})
+            return
+
+        token, chat_id = telegram_credentials()
+        if not token or not chat_id:
+            self.send_json(
+                HTTPStatus.SERVICE_UNAVAILABLE,
+                {"error": "Приём заявок ещё не настроен. Напишите нам, пожалуйста, в VK."},
+            )
+            return
+
+        result = telegram_request(
+            token,
+            "sendMessage",
+            {
+                "chat_id": chat_id,
+                "text": build_booking_message(booking),
+                "parse_mode": "HTML",
+                "disable_web_page_preview": True,
+            },
+        )
+
+        if not result.get("ok"):
+            print(f"[заявка] не доставлена: {result.get('description')}")
+            self.send_json(
+                HTTPStatus.BAD_GATEWAY,
+                {"error": "Не удалось отправить заявку. Напишите нам, пожалуйста, в VK."},
+            )
+            return
+
+        self.send_json(HTTPStatus.OK, {"delivered": True})
+
+    def handle_telegram_settings(self) -> None:
+        payload = self.read_json_body()
+        if payload is None:
+            self.send_json(HTTPStatus.BAD_REQUEST, {"error": "Некорректный запрос."})
+            return
+
+        token = clean_booking_field(payload.get("token"), 120)
+        chat_id = clean_booking_field(payload.get("chatId"), 40)
+        if not token or not chat_id:
+            self.send_json(HTTPStatus.BAD_REQUEST, {"error": "Нужны и токен, и chat id."})
+            return
+        if not TOKEN_PATTERN.match(token):
+            self.send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"error": "Токен не похож на настоящий. Скопируйте его целиком из @BotFather."},
+            )
+            return
+        if not CHAT_ID_PATTERN.match(chat_id):
+            self.send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"error": "Chat id — это число (у групп со знаком минус) или @имя канала."},
+            )
+            return
+
+        check = telegram_request(token, "getMe")
+        if not check.get("ok"):
+            self.send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"error": f"Telegram не принял токен: {check.get('description', 'неизвестная ошибка')}"},
+            )
+            return
+
+        probe = telegram_request(
+            token,
+            "sendMessage",
+            {"chat_id": chat_id, "text": "✅ Приём заявок с сайта настроен. Сюда будут приходить заявки."},
+        )
+        if not probe.get("ok"):
+            self.send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"error": f"Токен верный, но в этот чат бот писать не может: {probe.get('description', '')}"},
+            )
+            return
+
+        write_setting("telegram_token", token)
+        write_setting("telegram_chat_id", chat_id)
+        self.send_json(
+            HTTPStatus.OK,
+            {"configured": True, "botName": check["result"].get("username", ""), "chatId": chat_id},
         )
 
     def handle_admin_logout(self) -> None:

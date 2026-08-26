@@ -181,6 +181,77 @@ const createCard = async (slot, index) => {
   }
 };
 
+const telegramForm = document.querySelector("[data-telegram-form]");
+const telegramState = document.querySelector("[data-telegram-state]");
+const telegramStatus = document.querySelector("[data-telegram-status]");
+
+const setTelegramState = (text, state) => {
+  telegramState.textContent = text;
+  telegramState.dataset.state = state;
+};
+
+const setTelegramStatus = (message, type = "success") => {
+  telegramStatus.textContent = message;
+  telegramStatus.dataset.type = type;
+};
+
+const loadTelegramSettings = async () => {
+  try {
+    const response = await fetch("/api/admin/telegram", { cache: "no-store" });
+    if (!response.ok) throw new Error("Не удалось прочитать настройки.");
+    const settings = await response.json();
+
+    if (!settings.configured) {
+      setTelegramState("Заявки пока никуда не приходят", "missing");
+      return;
+    }
+
+    telegramForm.elements.chatId.value = settings.chatId;
+    setTelegramState(
+      settings.fromEnvironment
+        ? "Настроено через переменные окружения сервера"
+        : `Заявки приходят в чат ${settings.chatId} · токен ${settings.tokenHint}`,
+      "ready"
+    );
+  } catch {
+    setTelegramState("Не удалось проверить настройки", "missing");
+  }
+};
+
+telegramForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = telegramForm.querySelector(".settings-save");
+  const token = telegramForm.elements.token.value.trim();
+  const chatId = telegramForm.elements.chatId.value.trim();
+
+  if (!token || !chatId) {
+    setTelegramStatus("Заполните оба поля.", "error");
+    return;
+  }
+
+  button.disabled = true;
+  setTelegramStatus("Проверяем в Telegram…");
+
+  try {
+    const response = await fetch("/api/admin/telegram", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, chatId }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "Не удалось сохранить.");
+
+    telegramForm.elements.token.value = "";
+    setTelegramStatus(`Готово. Бот @${payload.botName} отправил в чат проверочное сообщение.`);
+    await loadTelegramSettings();
+  } catch (error) {
+    setTelegramStatus(error.message, "error");
+  } finally {
+    button.disabled = false;
+  }
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   MEDIA_SLOTS.forEach((slot, index) => createCard(slot, index));
+  if (telegramForm) loadTelegramSettings();
 });

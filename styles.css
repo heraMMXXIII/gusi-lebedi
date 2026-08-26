@@ -1057,7 +1057,6 @@ button {
   min-height: 760px;
   overflow: hidden;
   color: white;
-  text-align: center;
   background: var(--red);
 }
 
@@ -1086,7 +1085,7 @@ button {
   position: relative;
   z-index: 2;
   max-width: 1000px;
-  margin: 50px auto 32px;
+  margin: 34px 0 30px;
 }
 
 .cta h2 em {
@@ -1096,8 +1095,8 @@ button {
 .cta-note {
   position: relative;
   z-index: 2;
-  max-width: 530px;
-  margin: 0 auto 34px;
+  max-width: 460px;
+  margin: 0 0 40px;
   font-family: var(--serif);
   font-size: 19px;
 }
@@ -1112,6 +1111,259 @@ button {
 .button-light:hover {
   color: white;
   background: var(--ink);
+}
+
+/* --- Заявка --------------------------------------------------------- */
+
+.cta-inner {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  max-width: 1240px;
+  margin: 0 auto;
+  grid-template-columns: minmax(320px, 1fr) minmax(360px, 520px);
+  align-items: start;
+  gap: clamp(40px, 6vw, 96px);
+}
+
+.cta-lede {
+  padding-top: 8px;
+}
+
+.cta-contacts {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  max-width: 460px;
+  margin: 0;
+  padding: 26px 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.4);
+  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  list-style: none;
+}
+
+.cta-contacts span {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  opacity: 0.72;
+}
+
+.cta-contacts p {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 19px;
+}
+
+.cta-contacts a {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.cta-contacts a:hover {
+  border-bottom-color: white;
+}
+
+.booking-form {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  padding: clamp(24px, 3vw, 38px);
+  color: var(--ink);
+  border-radius: 6px;
+  background: var(--paper-light);
+  gap: 18px;
+  box-shadow: 0 26px 60px rgba(0, 0, 0, 0.18);
+}
+
+.booking-title {
+  margin: 0 4px 4px 0;
+  font-family: var(--serif);
+  font-size: clamp(27px, 2.4vw, 34px);
+  line-height: 1.03;
+  letter-spacing: -0.045em;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+
+.field label em {
+  font-weight: 500;
+  font-style: normal;
+  text-transform: none;
+  letter-spacing: 0.04em;
+  opacity: 0.5;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.booking-form input,
+.booking-form select,
+.booking-form textarea {
+  width: 100%;
+  padding: 14px 15px;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--paper);
+  font-family: var(--sans);
+  font-size: 16px;
+  transition: border-color 0.2s ease, background 0.2s ease;
+  appearance: none;
+}
+
+.booking-form textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.booking-form input::placeholder,
+.booking-form textarea::placeholder {
+  color: rgba(0, 0, 0, 0.38);
+}
+
+.booking-form input:focus-visible,
+.booking-form select:focus-visible,
+.booking-form textarea:focus-visible {
+  border-color: var(--ink);
+  background: var(--paper-light);
+  outline: none;
+}
+
+.booking-form .has-error {
+  border-color: var(--red);
+  background: rgba(255, 0, 0, 0.05);
+}
+
+.select-wrap {
+  position: relative;
+}
+
+.select-wrap svg {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  width: 18px;
+  pointer-events: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+  transform: translateY(-50%);
+}
+
+.consent {
+  display: grid;
+  align-items: start;
+  cursor: pointer;
+  gap: 11px;
+  grid-template-columns: auto 1fr;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.consent input {
+  width: 19px;
+  height: 19px;
+  margin: 1px 0 0;
+  padding: 0;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--paper);
+}
+
+.consent input:checked {
+  border-color: var(--ink);
+  background: var(--ink);
+}
+
+.consent input:checked::after {
+  display: block;
+  padding-left: 4px;
+  color: white;
+  content: "✓";
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.consent input.has-error {
+  border-color: var(--red);
+}
+
+.consent span {
+  opacity: 0.72;
+}
+
+.hp-field {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  clip: rect(0, 0, 0, 0);
+  pointer-events: none;
+}
+
+.booking-submit {
+  width: 100%;
+  margin-top: 4px;
+  color: white;
+  background: var(--ink);
+}
+
+.booking-submit:hover {
+  color: white;
+  background: var(--red);
+}
+
+.booking-submit[disabled] {
+  cursor: default;
+  opacity: 0.55;
+  transform: none;
+}
+
+.form-status {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.form-status:empty {
+  display: none;
+}
+
+.form-status.is-error {
+  color: var(--red);
+}
+
+.form-status.is-success {
+  font-weight: 700;
+}
+
+.status-link {
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .site-footer {
@@ -1593,5 +1845,45 @@ button {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .cta-inner {
+    grid-template-columns: 1fr;
+    gap: 46px;
+  }
+
+  .cta-lede,
+  .cta-note,
+  .cta-contacts {
+    max-width: 620px;
+  }
+}
+
+@media (max-width: 780px) {
+  .cta {
+    padding-bottom: 120px;
+  }
+
+  .cta h2 {
+    margin: 34px 0 26px;
+  }
+
+  .booking-form {
+    padding: 22px 18px 26px;
+    gap: 16px;
+  }
+
+  .field-row {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  /* 16px и больше — иначе iOS зумит страницу при фокусе на поле. */
+  .booking-form input,
+  .booking-form select,
+  .booking-form textarea {
+    font-size: 16px;
   }
 }

@@ -136,6 +136,95 @@ main { overflow: hidden; }
 .storage-note span { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.14em; }
 .storage-note p { margin: 0; font-family: var(--serif); font-size: 16px; }
 
+.settings-section { padding: 78px clamp(20px, 5vw, 76px) 0; }
+
+.media-heading > .settings-state {
+  margin: 0 0 8px;
+  font-family: var(--serif);
+  /* Подсказка с токеном должна читаться как есть — регистр в ней значимый. */
+  font-size: 16px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.media-heading > .settings-state[data-state="ready"] { color: #1e6936; }
+.media-heading > .settings-state[data-state="missing"] { color: var(--red); }
+
+.settings-form {
+  display: grid;
+  max-width: 760px;
+  padding: 26px clamp(18px, 3vw, 30px) 24px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper-light);
+  gap: 18px;
+}
+
+.settings-hint {
+  margin: 0;
+  color: rgba(22, 21, 19, 0.68);
+  font-family: var(--serif);
+  font-size: 15px;
+}
+
+.settings-hint code {
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--paper);
+  font-size: 13px;
+}
+
+.settings-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.settings-row label { display: grid; gap: 7px; }
+
+.settings-row span {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.settings-row input {
+  width: 100%;
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--paper);
+  font-size: 15px;
+}
+
+.settings-row input:focus-visible {
+  border-color: var(--blue);
+  background: var(--paper-light);
+  outline: none;
+}
+
+.settings-save {
+  justify-self: start;
+  padding: 14px 26px;
+  color: white;
+  border: 0;
+  border-radius: 100px;
+  background: var(--ink);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.settings-save:hover { background: var(--blue); }
+.settings-save:disabled { cursor: default; opacity: 0.5; }
+
+@media (max-width: 700px) {
+  .settings-row { grid-template-columns: 1fr; }
+}
+
 .media-section { padding: 90px clamp(20px, 5vw, 76px) 120px; }
 
 .media-heading {

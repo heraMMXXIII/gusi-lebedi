@@ -38,6 +38,7 @@
     <link rel="stylesheet" href="styles.css" />
     <script src="cms.js?v=3" defer></script>
     <script src="script.js?v=3" defer></script>
+    <script src="form.js?v=1" defer></script>
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -52,7 +53,7 @@
         "sameAs": ["https://vk.ru/goncharnaya72"],
         "address": {
           "@type": "PostalAddress",
-          "streetAddress": "ул. Володарского, 24",
+          "streetAddress": "ул. Аккумуляторная, 1/1",
           "addressLocality": "Тюмень",
           "postalCode": "625000",
           "addressCountry": "RU"
@@ -84,7 +85,7 @@
         <a href="#idea">Идея</a>
         <a href="#program">Что внутри</a>
         <a href="#process">Как проходит</a>
-        <a class="nav-cta" href="https://vk.ru/goncharnaya72" target="_blank" rel="noopener noreferrer">Написать в VK</a>
+        <a class="nav-cta" href="#booking">Оставить заявку</a>
       </nav>
     </header>
 
@@ -103,8 +104,8 @@
                 Не аниматоры и готовый сценарий, а настоящее приключение с глиной,
                 красками и вещью, которой хочется гордиться.
               </p>
-              <a class="button button-dark" href="https://vk.ru/goncharnaya72" target="_blank" rel="noopener noreferrer">
-                <span>Обсудить праздник</span>
+              <a class="button button-dark" href="#booking">
+                <span>Оставить заявку</span>
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M5 12h13M13 6l6 6-6 6" />
                 </svg>
@@ -269,16 +270,120 @@
       </section>
 
       <section class="cta section" id="contact">
-        <p class="eyebrow reveal">Готовы придумать свой сюжет?</p>
-        <h2 class="reveal">Пусть этот день<br />будет <em>не как у всех.</em></h2>
-        <p class="cta-note reveal">
-          Напишите нам в сообщения сообщества: расскажите возраст именинника,
-          количество гостей и любимые темы — ответим и поможем собрать программу.
-        </p>
-        <a class="button button-light reveal" href="https://vk.ru/goncharnaya72" target="_blank" rel="noopener noreferrer">
-          <span>Написать мастерской в VK</span>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" /></svg>
-        </a>
+        <div class="cta-inner">
+          <div class="cta-lede">
+            <div class="section-index reveal">04 / Заявка</div>
+            <h2 class="reveal">Пусть этот день<br />будет <em>не как у всех.</em></h2>
+            <p class="cta-note reveal">
+              Расскажите, что задумали, — перезвоним, подберём дату и соберём программу
+              под вашу компанию. Обычно отвечаем в течение дня.
+            </p>
+
+            <ul class="cta-contacts reveal">
+              <li>
+                <span>Мастерская</span>
+                <p>
+                  <a href="https://2gis.ru/tyumen/firm/70000001100934302" target="_blank" rel="noopener noreferrer">
+                    ул. Аккумуляторная, 1/1 ↗
+                  </a>
+                </p>
+              </li>
+              <li>
+                <span>Мы в VK</span>
+                <p>
+                  <a href="https://vk.ru/goncharnaya72" target="_blank" rel="noopener noreferrer">
+                    vk.ru/goncharnaya72 ↗
+                  </a>
+                </p>
+              </li>
+            </ul>
+          </div>
+
+          <form class="booking-form reveal" id="booking" data-booking-form novalidate>
+            <p class="booking-title">Заявка на праздник<br />или мастер-класс</p>
+
+            <div class="field">
+              <label for="booking-name">Как вас зовут</label>
+              <input id="booking-name" name="name" type="text" autocomplete="name" placeholder="Имя" required />
+            </div>
+
+            <div class="field">
+              <label for="booking-phone">Контактный телефон</label>
+              <input
+                id="booking-phone"
+                name="phone"
+                type="tel"
+                inputmode="tel"
+                autocomplete="tel"
+                placeholder="+7 (___) ___-__-__"
+                required
+              />
+            </div>
+
+            <div class="field">
+              <label for="booking-format">Что хотите провести</label>
+              <div class="select-wrap">
+                <select id="booking-format" name="format" required>
+                  <option value="" disabled selected>Выберите формат</option>
+                  <option>Детский день рождения</option>
+                  <option>Мастер-класс для компании</option>
+                  <option>Индивидуальное занятие</option>
+                  <option>Группа из школы или детского сада</option>
+                  <option>Корпоратив или девичник</option>
+                  <option>Ещё не решили — подскажите</option>
+                </select>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+              </div>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label for="booking-date">Желаемая дата</label>
+                <input id="booking-date" name="date" type="date" required />
+              </div>
+              <div class="field">
+                <label for="booking-guests">Сколько человек</label>
+                <input
+                  id="booking-guests"
+                  name="guests"
+                  type="number"
+                  inputmode="numeric"
+                  min="1"
+                  max="60"
+                  placeholder="8"
+                  required
+                />
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="booking-comment">Что важно знать <em>(по желанию)</em></label>
+              <textarea
+                id="booking-comment"
+                name="comment"
+                rows="3"
+                placeholder="Возраст именинника, любимые темы, удобное время"
+              ></textarea>
+            </div>
+
+            <label class="consent">
+              <input type="checkbox" name="consent" required />
+              <span>Согласен на обработку персональных данных для ответа на заявку</span>
+            </label>
+
+            <p class="hp-field" aria-hidden="true">
+              <label for="booking-company">Не заполняйте это поле</label>
+              <input id="booking-company" name="company" type="text" tabindex="-1" autocomplete="off" />
+            </p>
+
+            <button class="button button-light booking-submit" type="submit">
+              <span data-submit-label>Отправить заявку</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" /></svg>
+            </button>
+
+            <p class="form-status" role="status" aria-live="polite" data-form-status></p>
+          </form>
+        </div>
       </section>
     </main>
 
@@ -289,7 +394,7 @@
       <p>
         Творческая мастерская<br />и дни рождения с характером<br />
         <a class="footer-address" href="https://2gis.ru/tyumen/firm/70000001100934302" target="_blank" rel="noopener noreferrer">
-          Тюмень, ул. Володарского, 24 ↗
+          Тюмень, ул. Аккумуляторная, 1/1 ↗
         </a>
       </p>
       <div class="footer-meta">
