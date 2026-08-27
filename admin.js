@@ -182,76 +182,214 @@ const createCard = async (slot, index) => {
 };
 
 const telegramForm = document.querySelector("[data-telegram-form]");
+const emailForm = document.querySelector("[data-email-form]");
+const bookingsList = document.querySelector("[data-bookings-list]");
+const bookingsCount = document.querySelector("[data-bookings-count]");
+
+const setChannelState = (element, text, state) => {
+  element.textContent = text;
+  element.dataset.state = state;
+};
+
+const setChannelStatus = (element, message, type = "success") => {
+  element.textContent = message;
+  element.dataset.type = type;
+};
+
+/** Общий обработчик для обеих форм настройки: сохранить, проверить, обновить состояние. */
+const wireChannelForm = ({ form, endpoint, statusNode, collect, onSaved }) => {
+  if (!form) return;
+  const button = form.querySelector(".settings-save");
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const body = collect();
+    if (Object.values(body).some((value) => !value)) {
+      setChannelStatus(statusNode, "Заполните все поля.", "error");
+      return;
+    }
+
+    button.disabled = true;
+    setChannelStatus(statusNode, "Проверяем…");
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Не удалось сохранить.");
+      onSaved(payload);
+    } catch (error) {
+      setChannelStatus(statusNode, error.message, "error");
+    } finally {
+      button.disabled = false;
+    }
+  });
+};
+
 const telegramState = document.querySelector("[data-telegram-state]");
 const telegramStatus = document.querySelector("[data-telegram-status]");
-
-const setTelegramState = (text, state) => {
-  telegramState.textContent = text;
-  telegramState.dataset.state = state;
-};
-
-const setTelegramStatus = (message, type = "success") => {
-  telegramStatus.textContent = message;
-  telegramStatus.dataset.type = type;
-};
+const emailState = document.querySelector("[data-email-state]");
+const emailStatus = document.querySelector("[data-email-status]");
 
 const loadTelegramSettings = async () => {
   try {
     const response = await fetch("/api/admin/telegram", { cache: "no-store" });
-    if (!response.ok) throw new Error("Не удалось прочитать настройки.");
+    if (!response.ok) throw new Error();
     const settings = await response.json();
 
     if (!settings.configured) {
-      setTelegramState("Заявки пока никуда не приходят", "missing");
+      setChannelState(telegramState, "не настроен", "missing");
       return;
     }
-
     telegramForm.elements.chatId.value = settings.chatId;
-    setTelegramState(
-      settings.fromEnvironment
-        ? "Настроено через переменные окружения сервера"
-        : `Заявки приходят в чат ${settings.chatId} · токен ${settings.tokenHint}`,
+    setChannelState(
+      telegramState,
+      settings.fromEnvironment ? "настроен на сервере" : `чат ${settings.chatId} · ${settings.tokenHint}`,
       "ready"
     );
   } catch {
-    setTelegramState("Не удалось проверить настройки", "missing");
+    setChannelState(telegramState, "не удалось проверить", "missing");
   }
 };
 
-telegramForm?.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const button = telegramForm.querySelector(".settings-save");
-  const token = telegramForm.elements.token.value.trim();
-  const chatId = telegramForm.elements.chatId.value.trim();
-
-  if (!token || !chatId) {
-    setTelegramStatus("Заполните оба поля.", "error");
-    return;
-  }
-
-  button.disabled = true;
-  setTelegramStatus("Проверяем в Telegram…");
-
+const loadEmailSettings = async () => {
   try {
-    const response = await fetch("/api/admin/telegram", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, chatId }),
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || "Не удалось сохранить.");
+    const response = await fetch("/api/admin/email", { cache: "no-store" });
+    if (!response.ok) throw new Error();
+    const settings = await response.json();
 
-    telegramForm.elements.token.value = "";
-    setTelegramStatus(`Готово. Бот @${payload.botName} отправил в чат проверочное сообщение.`);
-    await loadTelegramSettings();
-  } catch (error) {
-    setTelegramStatus(error.message, "error");
-  } finally {
-    button.disabled = false;
+    if (!settings.configured) {
+      setChannelState(emailState, "не настроена", "missing");
+      return;
+    }
+    emailForm.elements.sender.value = settings.sender;
+    emailForm.elements.recipient.value = settings.recipient;
+    setChannelState(
+      emailState,
+      settings.fromEnvironment ? "настроена на сервере" : `на ${settings.recipient}`,
+      "ready"
+    );
+  } catch {
+    setChannelState(emailState, "не удалось проверить", "missing");
   }
+};
+
+wireChannelForm({
+  form: telegramForm,
+  endpoint: "/api/admin/telegram",
+  statusNode: telegramStatus,
+  collect: () => ({
+    token: telegramForm.elements.token.value.trim(),
+    chatId: telegramForm.elements.chatId.value.trim(),
+  }),
+  onSaved: async (payload) => {
+    telegramForm.elements.token.value = "";
+    setChannelStatus(telegramStatus, `Готово. Бот @${payload.botName} прислал в чат проверочное сообщение.`);
+    await loadTelegramSettings();
+  },
 });
+
+wireChannelForm({
+  form: emailForm,
+  endpoint: "/api/admin/email",
+  statusNode: emailStatus,
+  collect: () => ({
+    apiKey: emailForm.elements.apiKey.value.trim(),
+    sender: emailForm.elements.sender.value.trim(),
+    recipient: emailForm.elements.recipient.value.trim(),
+  }),
+  onSaved: async (payload) => {
+    emailForm.elements.apiKey.value = "";
+    setChannelStatus(emailStatus, `Готово. На ${payload.recipient} ушло проверочное письмо.`);
+    await loadEmailSettings();
+  },
+});
+
+const CHANNEL_NAMES = { telegram: "Telegram", email: "Почта" };
+
+// В базе дата лежит как 2026-09-12 — показываем её по-человечески.
+const formatEventDate = (value) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || "");
+  return match ? `${match[3]}.${match[2]}.${match[1]}` : value;
+};
+
+const renderBooking = (booking) => {
+  const card = document.createElement("article");
+  card.className = "booking-card";
+
+  const when = new Date(booking.created_at);
+  const whenText = Number.isNaN(when.valueOf())
+    ? booking.created_at
+    : when.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
+  const parts = [
+    `<p class="booking-when">${whenText}</p>`,
+    `<h3></h3>`,
+    `<p class="booking-phone"><a href="tel:${booking.phone.replace(/[^\d+]/g, "")}"></a></p>`,
+    `<div class="booking-facts"><span class="fact-format"></span><span class="fact-when"></span></div>`,
+  ];
+  if (booking.comment) parts.push(`<p class="booking-comment"></p>`);
+  parts.push(`<div class="booking-delivery"></div>`);
+  card.innerHTML = parts.join("");
+
+  // Текст заявки пришёл от постороннего человека — вставляем только как текст.
+  card.querySelector("h3").textContent = booking.name;
+  card.querySelector(".booking-phone a").textContent = booking.phone;
+  card.querySelector(".fact-format").textContent = booking.format;
+  card.querySelector(".fact-when").textContent = `${formatEventDate(booking.event_date)} · ${booking.guests} чел.`;
+  if (booking.comment) card.querySelector(".booking-comment").textContent = booking.comment;
+
+  const delivery = booking.delivery || {};
+  const deliveryNode = card.querySelector(".booking-delivery");
+  Object.entries(delivery).forEach(([channel, outcome]) => {
+    const tag = document.createElement("span");
+    tag.className = "delivery-tag";
+    tag.dataset.ok = String(outcome === "ok");
+    tag.textContent = `${CHANNEL_NAMES[channel] || channel}: ${outcome === "ok" ? "доставлено" : "сбой"}`;
+    tag.title = outcome;
+    deliveryNode.append(tag);
+  });
+  if (Object.values(delivery).some((outcome) => outcome !== "ok")) {
+    card.classList.add("has-failure");
+  }
+
+  return card;
+};
+
+const loadBookings = async () => {
+  if (!bookingsList) return;
+  try {
+    const response = await fetch("/api/admin/bookings", { cache: "no-store" });
+    if (!response.ok) throw new Error();
+    const bookings = await response.json();
+
+    bookingsList.replaceChildren();
+    if (!bookings.length) {
+      const empty = document.createElement("p");
+      empty.className = "bookings-empty";
+      empty.textContent = "Заявок пока нет. Как только кто-то заполнит форму, она появится здесь.";
+      bookingsList.append(empty);
+      bookingsCount.textContent = "";
+      return;
+    }
+
+    bookings.forEach((booking) => bookingsList.append(renderBooking(booking)));
+    bookingsCount.textContent = `Показаны последние ${bookings.length}`;
+  } catch {
+    bookingsList.replaceChildren();
+    const failed = document.createElement("p");
+    failed.className = "bookings-empty";
+    failed.textContent = "Не удалось загрузить заявки.";
+    bookingsList.append(failed);
+  }
+};
 
 document.addEventListener("DOMContentLoaded", () => {
   MEDIA_SLOTS.forEach((slot, index) => createCard(slot, index));
-  if (telegramForm) loadTelegramSettings();
+  loadTelegramSettings();
+  loadEmailSettings();
+  loadBookings();
 });

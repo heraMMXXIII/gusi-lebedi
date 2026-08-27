@@ -35,6 +35,7 @@ SESSION_LOCK = Lock()
 LOCAL_TIMEZONE = timezone(timedelta(hours=5))  # Тюмень
 TOKEN_PATTERN = re.compile(r"^\d{5,}:[A-Za-z0-9_-]{20,}$")
 CHAT_ID_PATTERN = re.compile(r"^(-?\d{1,32}|@[A-Za-z0-9_]{4,32})$")
+EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s.]+\.[^@\s]{2,}$")
 BOOKING_MAX_PER_WINDOW = 5
 BOOKING_WINDOW = 10 * 60
 BOOKING_HISTORY: dict[str, list[float]] = {}
@@ -78,6 +79,21 @@ def initialize_database() -> None:
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS bookings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at TEXT NOT NULL,
+                name TEXT NOT NULL,
+                phone TEXT NOT NULL,
+                format TEXT NOT NULL,
+                event_date TEXT NOT NULL,
+                guests TEXT NOT NULL,
+                comment TEXT NOT NULL,
+                delivery TEXT NOT NULL
             )
             """
         )
@@ -129,6 +145,113 @@ def telegram_request(token: str, method: str, payload: dict | None = None) -> di
             return {"ok": False, "description": f"Telegram ответил {error.code}"}
     except Exception as error:  # сеть, DNS, таймаут, кодировка — заявка важнее аккуратного типа
         return {"ok": False, "description": f"Нет связи с Telegram: {error}"}
+
+
+def brevo_credentials() -> tuple[str, str, str]:
+    key = os.environ.get("GUSI_BREVO_API_KEY", "").strip() or read_setting("brevo_api_key")
+    sender = os.environ.get("GUSI_BREVO_SENDER", "").strip() or read_setting("brevo_sender")
+    recipient = os.environ.get("GUSI_BREVO_RECIPIENT", "").strip() or read_setting("brevo_recipient")
+    return key, sender, recipient
+
+
+def brevo_send(key: str, sender: str, recipient: str, subject: str, html_body: str) -> dict:
+    payload = {
+        "sender": {"name": "Сайт Гуси-Лебеди", "email": sender},
+        "to": [{"email": recipient}],
+        "subject": subject,
+        "htmlContent": html_body,
+    }
+    request = urllib.request.Request(
+        "https://api.brevo.com/v3/smtp/email",
+        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={"Content-Type": "application/json", "api-key": key, "accept": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=15) as response:
+            response.read()
+            return {"ok": True}
+    except urllib.error.HTTPError as error:
+        try:
+            details = json.loads(error.read())
+            message = details.get("message") or details.get("code") or f"Brevo ответил {error.code}"
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            message = f"Brevo ответил {error.code}"
+        return {"ok": False, "description": message}
+    except Exception as error:  # сеть, DNS, таймаут — письмо не важнее самой заявки
+        return {"ok": False, "description": f"Нет связи с Brevo: {error}"}
+
+
+def build_booking_email(booking: dict) -> str:
+    rows = [
+        ("Имя", booking["name"]),
+        ("Телефон", booking["phone"]),
+        ("Формат", booking["format"]),
+        ("Дата", format_booking_date(booking["date"])),
+        ("Человек", booking["guests"]),
+    ]
+    if booking["comment"]:
+        rows.append(("Комментарий", booking["comment"]))
+
+    cells = "".join(
+        f'<tr><td style="padding:6px 16px 6px 0;color:#666;white-space:nowrap;vertical-align:top">{escape(label)}</td>'
+        f'<td style="padding:6px 0"><b>{escape(value)}</b></td></tr>'
+        for label, value in rows
+    )
+    stamp = datetime.now(LOCAL_TIMEZONE).strftime("%d.%m.%Y, %H:%M")
+    return (
+        '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;color:#161513">'
+        "<h2 style=\"margin:0 0 18px\">Новая заявка с сайта</h2>"
+        f'<table style="border-collapse:collapse">{cells}</table>'
+        f'<p style="margin:22px 0 0;color:#888;font-size:13px">Отправлено {escape(stamp)}</p>'
+        "</div>"
+    )
+
+
+def deliver_booking(booking: dict) -> dict:
+    """Каждый канал отправляется отдельно: сбой одного не мешает другому."""
+    results: dict[str, str] = {}
+
+    token, chat_id = telegram_credentials()
+    if token and chat_id:
+        outcome = telegram_request(
+            token,
+            "sendMessage",
+            {
+                "chat_id": chat_id,
+                "text": build_booking_message(booking),
+                "parse_mode": "HTML",
+                "disable_web_page_preview": True,
+            },
+        )
+        results["telegram"] = "ok" if outcome.get("ok") else f"ошибка: {outcome.get('description')}"
+
+    key, sender, recipient = brevo_credentials()
+    if key and sender and recipient:
+        outcome = brevo_send(key, sender, recipient, "Новая заявка с сайта", build_booking_email(booking))
+        results["email"] = "ok" if outcome.get("ok") else f"ошибка: {outcome.get('description')}"
+
+    return results
+
+
+def store_booking(booking: dict, delivery: dict) -> None:
+    with connect_database() as connection:
+        connection.execute(
+            """
+            INSERT INTO bookings (created_at, name, phone, format, event_date, guests, comment, delivery)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                datetime.now(LOCAL_TIMEZONE).isoformat(timespec="seconds"),
+                booking["name"],
+                booking["phone"],
+                booking["format"],
+                booking["date"],
+                booking["guests"],
+                booking["comment"],
+                json.dumps(delivery, ensure_ascii=False),
+            ),
+        )
 
 
 def booking_rate_limit_exceeded(client: str) -> bool:
@@ -316,6 +439,41 @@ class WorkshopHandler(SimpleHTTPRequestHandler):
                 },
             )
             return
+        if path == "/api/admin/email":
+            if not self.require_admin_api():
+                return
+            key, sender, recipient = brevo_credentials()
+            self.send_json(
+                HTTPStatus.OK,
+                {
+                    "configured": bool(key and sender and recipient),
+                    "sender": sender,
+                    "recipient": recipient,
+                    "keyHint": f"…{key[-6:]}" if key else "",
+                    "fromEnvironment": bool(os.environ.get("GUSI_BREVO_API_KEY", "").strip()),
+                },
+            )
+            return
+        if path == "/api/admin/bookings":
+            if not self.require_admin_api():
+                return
+            with connect_database() as connection:
+                rows = connection.execute(
+                    """
+                    SELECT id, created_at, name, phone, format, event_date, guests, comment, delivery
+                    FROM bookings ORDER BY id DESC LIMIT 100
+                    """
+                ).fetchall()
+            bookings = []
+            for row in rows:
+                item = dict(row)
+                try:
+                    item["delivery"] = json.loads(item["delivery"])
+                except (json.JSONDecodeError, TypeError):
+                    item["delivery"] = {}
+                bookings.append(item)
+            self.send_json(HTTPStatus.OK, bookings)
+            return
         if path == "/api/admin/session":
             if not self.require_admin_api():
                 return
@@ -369,6 +527,9 @@ class WorkshopHandler(SimpleHTTPRequestHandler):
             return
         if path == "/api/admin/telegram":
             self.handle_telegram_settings()
+            return
+        if path == "/api/admin/email":
+            self.handle_email_settings()
             return
 
         slot = self.parse_media_slot()
@@ -491,27 +652,22 @@ class WorkshopHandler(SimpleHTTPRequestHandler):
             self.send_json(HTTPStatus.BAD_REQUEST, {"error": "Заполнены не все поля заявки."})
             return
 
-        token, chat_id = telegram_credentials()
-        if not token or not chat_id:
+        # Сначала сохраняем: даже если все каналы отвалятся, заявка не пропадёт.
+        delivery = deliver_booking(booking)
+        store_booking(booking, delivery)
+
+        for channel, outcome in delivery.items():
+            if outcome != "ok":
+                print(f"[заявка] {channel}: {outcome}")
+
+        if not delivery:
             self.send_json(
                 HTTPStatus.SERVICE_UNAVAILABLE,
                 {"error": "Приём заявок ещё не настроен. Напишите нам, пожалуйста, в VK."},
             )
             return
 
-        result = telegram_request(
-            token,
-            "sendMessage",
-            {
-                "chat_id": chat_id,
-                "text": build_booking_message(booking),
-                "parse_mode": "HTML",
-                "disable_web_page_preview": True,
-            },
-        )
-
-        if not result.get("ok"):
-            print(f"[заявка] не доставлена: {result.get('description')}")
+        if not any(outcome == "ok" for outcome in delivery.values()):
             self.send_json(
                 HTTPStatus.BAD_GATEWAY,
                 {"error": "Не удалось отправить заявку. Напишите нам, пожалуйста, в VK."},
@@ -570,6 +726,46 @@ class WorkshopHandler(SimpleHTTPRequestHandler):
             HTTPStatus.OK,
             {"configured": True, "botName": check["result"].get("username", ""), "chatId": chat_id},
         )
+
+    def handle_email_settings(self) -> None:
+        payload = self.read_json_body()
+        if payload is None:
+            self.send_json(HTTPStatus.BAD_REQUEST, {"error": "Некорректный запрос."})
+            return
+
+        key = clean_booking_field(payload.get("apiKey"), 200)
+        sender = clean_booking_field(payload.get("sender"), 120).lower()
+        recipient = clean_booking_field(payload.get("recipient"), 120).lower()
+
+        if not key or not sender or not recipient:
+            self.send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"error": "Нужны ключ Brevo, адрес отправителя и адрес получателя."},
+            )
+            return
+        for address, label in ((sender, "отправителя"), (recipient, "получателя")):
+            if not EMAIL_PATTERN.match(address):
+                self.send_json(HTTPStatus.BAD_REQUEST, {"error": f"Адрес {label} выглядит неправильно."})
+                return
+
+        probe = brevo_send(
+            key,
+            sender,
+            recipient,
+            "Проверка: заявки с сайта",
+            "<p>Это проверочное письмо. Заявки с сайта будут приходить сюда.</p>",
+        )
+        if not probe.get("ok"):
+            self.send_json(
+                HTTPStatus.BAD_REQUEST,
+                {"error": f"Brevo не принял письмо: {probe.get('description', 'неизвестная ошибка')}"},
+            )
+            return
+
+        write_setting("brevo_api_key", key)
+        write_setting("brevo_sender", sender)
+        write_setting("brevo_recipient", recipient)
+        self.send_json(HTTPStatus.OK, {"configured": True, "recipient": recipient})
 
     def handle_admin_logout(self) -> None:
         token = self.get_session_token()

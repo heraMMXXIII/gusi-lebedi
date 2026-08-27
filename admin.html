@@ -45,29 +45,71 @@
             <p class="eyebrow">Заявки с сайта</p>
             <h2 id="settings-title">Куда их присылать</h2>
           </div>
-          <p class="settings-state" data-telegram-state>Проверяем…</p>
+          <p>Заявка уходит во все настроенные каналы сразу</p>
         </div>
 
-        <form class="settings-form" data-telegram-form>
-          <p class="settings-hint">
-            Заявки приходят сообщением в Telegram. Токен хранится на сервере и на сайте не виден.
-            Где взять оба значения — написано в <code>README.md</code>, раздел «Заявки».
-          </p>
+        <div class="settings-grid">
+          <form class="settings-form" data-telegram-form>
+            <div class="settings-head">
+              <h3>Telegram</h3>
+              <p class="settings-state" data-telegram-state>Проверяем…</p>
+            </div>
+            <p class="settings-hint">
+              Быстрый канал: сообщение приходит на телефон за пару секунд.
+              Где взять токен и chat id — в <code>README.md</code>.
+            </p>
 
-          <div class="settings-row">
             <label>
               <span>Токен бота</span>
               <input type="password" name="token" autocomplete="off" placeholder="123456789:AAH..." required />
             </label>
             <label>
               <span>Chat id получателя</span>
-              <input type="text" name="chatId" inputmode="numeric" autocomplete="off" placeholder="2033329521" required />
+              <input type="text" name="chatId" autocomplete="off" placeholder="2033329521" required />
             </label>
-          </div>
 
-          <button class="settings-save" type="submit">Сохранить и проверить</button>
-          <p class="card-status" role="status" aria-live="polite" data-telegram-status></p>
-        </form>
+            <button class="settings-save" type="submit">Сохранить и проверить</button>
+            <p class="card-status" role="status" aria-live="polite" data-telegram-status></p>
+          </form>
+
+          <form class="settings-form" data-email-form>
+            <div class="settings-head">
+              <h3>Почта</h3>
+              <p class="settings-state" data-email-state>Проверяем…</p>
+            </div>
+            <p class="settings-hint">
+              Запасной канал через Brevo. Ключ берётся в личном кабинете Brevo,
+              отправитель должен быть там подтверждён.
+            </p>
+
+            <label>
+              <span>Ключ Brevo</span>
+              <input type="password" name="apiKey" autocomplete="off" placeholder="xkeysib-..." required />
+            </label>
+            <label>
+              <span>Отправитель (подтверждён в Brevo)</span>
+              <input type="email" name="sender" autocomplete="off" placeholder="site@gusilebedy.ru" required />
+            </label>
+            <label>
+              <span>Кому присылать заявки</span>
+              <input type="email" name="recipient" autocomplete="off" placeholder="pochta@example.com" required />
+            </label>
+
+            <button class="settings-save" type="submit">Сохранить и проверить</button>
+            <p class="card-status" role="status" aria-live="polite" data-email-status></p>
+          </form>
+        </div>
+      </section>
+
+      <section class="bookings-section" aria-labelledby="bookings-title">
+        <div class="media-heading">
+          <div>
+            <p class="eyebrow">Архив</p>
+            <h2 id="bookings-title">Последние заявки</h2>
+          </div>
+          <p data-bookings-count></p>
+        </div>
+        <div class="bookings-list" data-bookings-list></div>
       </section>
 
       <section class="media-section" aria-labelledby="media-title">
