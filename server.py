@@ -18,7 +18,7 @@ from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from threading import Lock
+from threading import Lock, Thread
 from urllib.parse import quote, unquote, urlparse
 
 
@@ -36,6 +36,9 @@ LOCAL_TIMEZONE = timezone(timedelta(hours=5))  # Тюмень
 TOKEN_PATTERN = re.compile(r"^\d{5,}:[A-Za-z0-9_-]{20,}$")
 CHAT_ID_PATTERN = re.compile(r"^(-?\d{1,32}|@[A-Za-z0-9_]{4,32})$")
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s.]+\.[^@\s]{2,}$")
+# Наружу ходим только с жёстким потолком: посетитель не должен ждать сеть.
+CHANNEL_TIMEOUT = 8
+DELIVERY_WAIT = 9
 BOOKING_MAX_PER_WINDOW = 5
 BOOKING_WINDOW = 10 * 60
 BOOKING_HISTORY: dict[str, list[float]] = {}
@@ -136,7 +139,7 @@ def telegram_request(token: str, method: str, payload: dict | None = None) -> di
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=10) as response:
+        with urllib.request.urlopen(request, timeout=CHANNEL_TIMEOUT) as response:
             return json.loads(response.read())
     except urllib.error.HTTPError as error:
         try:
@@ -168,7 +171,7 @@ def brevo_send(key: str, sender: str, recipient: str, subject: str, html_body: s
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=15) as response:
+        with urllib.request.urlopen(request, timeout=CHANNEL_TIMEOUT) as response:
             response.read()
             return {"ok": True}
     except urllib.error.HTTPError as error:
@@ -208,35 +211,68 @@ def build_booking_email(booking: dict) -> str:
     )
 
 
-def deliver_booking(booking: dict) -> dict:
-    """Каждый канал отправляется отдельно: сбой одного не мешает другому."""
-    results: dict[str, str] = {}
-
+def configured_channels() -> list[str]:
+    channels = []
     token, chat_id = telegram_credentials()
     if token and chat_id:
-        outcome = telegram_request(
-            token,
-            "sendMessage",
-            {
-                "chat_id": chat_id,
-                "text": build_booking_message(booking),
-                "parse_mode": "HTML",
-                "disable_web_page_preview": True,
-            },
-        )
-        results["telegram"] = "ok" if outcome.get("ok") else f"ошибка: {outcome.get('description')}"
-
+        channels.append("telegram")
     key, sender, recipient = brevo_credentials()
     if key and sender and recipient:
-        outcome = brevo_send(key, sender, recipient, "Новая заявка с сайта", build_booking_email(booking))
-        results["email"] = "ok" if outcome.get("ok") else f"ошибка: {outcome.get('description')}"
-
-    return results
+        channels.append("email")
+    return channels
 
 
-def store_booking(booking: dict, delivery: dict) -> None:
+def send_telegram_booking(booking: dict) -> str:
+    token, chat_id = telegram_credentials()
+    outcome = telegram_request(
+        token,
+        "sendMessage",
+        {
+            "chat_id": chat_id,
+            "text": build_booking_message(booking),
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True,
+        },
+    )
+    return "ok" if outcome.get("ok") else f"ошибка: {outcome.get('description')}"
+
+
+def send_email_booking(booking: dict) -> str:
+    key, sender, recipient = brevo_credentials()
+    outcome = brevo_send(key, sender, recipient, "Новая заявка с сайта", build_booking_email(booking))
+    return "ok" if outcome.get("ok") else f"ошибка: {outcome.get('description')}"
+
+
+CHANNEL_SENDERS = {"telegram": send_telegram_booking, "email": send_email_booking}
+
+
+def deliver_booking(booking: dict, channels: list[str], results: dict[str, str]) -> list[Thread]:
+    """Каналы идут параллельно и каждый сам по себе: один зависший не держит остальные."""
+
+    def run(channel: str) -> None:
+        try:
+            results[channel] = CHANNEL_SENDERS[channel](booking)
+        except Exception as error:  # поток не должен падать молча
+            results[channel] = f"ошибка: {error}"
+
+    threads = [Thread(target=run, args=(channel,), daemon=True) for channel in channels]
+    for thread in threads:
+        thread.start()
+    return threads
+
+
+def finish_delivery_later(booking_id: int, threads: list[Thread], _snapshot: dict, results: dict) -> None:
+    for thread in threads:
+        thread.join(120)
+    update_booking_delivery(booking_id, dict(results))
+    for channel, outcome in results.items():
+        if outcome != "ok":
+            print(f"[заявка #{booking_id}] {channel} (с опозданием): {outcome}")
+
+
+def store_booking(booking: dict, delivery: dict) -> int:
     with connect_database() as connection:
-        connection.execute(
+        cursor = connection.execute(
             """
             INSERT INTO bookings (created_at, name, phone, format, event_date, guests, comment, delivery)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -251,6 +287,15 @@ def store_booking(booking: dict, delivery: dict) -> None:
                 booking["comment"],
                 json.dumps(delivery, ensure_ascii=False),
             ),
+        )
+        return int(cursor.lastrowid)
+
+
+def update_booking_delivery(booking_id: int, delivery: dict) -> None:
+    with connect_database() as connection:
+        connection.execute(
+            "UPDATE bookings SET delivery = ? WHERE id = ?",
+            (json.dumps(delivery, ensure_ascii=False), booking_id),
         )
 
 
@@ -652,22 +697,39 @@ class WorkshopHandler(SimpleHTTPRequestHandler):
             self.send_json(HTTPStatus.BAD_REQUEST, {"error": "Заполнены не все поля заявки."})
             return
 
-        # Сначала сохраняем: даже если все каналы отвалятся, заявка не пропадёт.
-        delivery = deliver_booking(booking)
-        store_booking(booking, delivery)
-
-        for channel, outcome in delivery.items():
-            if outcome != "ok":
-                print(f"[заявка] {channel}: {outcome}")
-
-        if not delivery:
+        channels = configured_channels()
+        if not channels:
             self.send_json(
                 HTTPStatus.SERVICE_UNAVAILABLE,
                 {"error": "Приём заявок ещё не настроен. Напишите нам, пожалуйста, в VK."},
             )
             return
 
-        if not any(outcome == "ok" for outcome in delivery.values()):
+        # Сначала в базу: даже если все каналы отвалятся, заявка не пропадёт.
+        results: dict[str, str] = {channel: "отправляется" for channel in channels}
+        booking_id = store_booking(booking, results)
+
+        threads = deliver_booking(booking, channels, results)
+        deadline = time.monotonic() + DELIVERY_WAIT
+        for thread in threads:
+            thread.join(max(deadline - time.monotonic(), 0))
+
+        update_booking_delivery(booking_id, dict(results))
+        for channel, outcome in results.items():
+            if outcome != "ok":
+                print(f"[заявка #{booking_id}] {channel}: {outcome}")
+
+        # Канал, который не уложился в отведённое время, дописывает результат сам.
+        if any(thread.is_alive() for thread in threads):
+            Thread(
+                target=finish_delivery_later,
+                args=(booking_id, threads, dict(results), results),
+                daemon=True,
+            ).start()
+            self.send_json(HTTPStatus.OK, {"delivered": True})
+            return
+
+        if not any(outcome == "ok" for outcome in results.values()):
             self.send_json(
                 HTTPStatus.BAD_GATEWAY,
                 {"error": "Не удалось отправить заявку. Напишите нам, пожалуйста, в VK."},
