@@ -171,6 +171,7 @@ def resend_send(key: str, sender: str, recipient: str, subject: str, html_body: 
             "Authorization": f"Bearer {key}",
             "Content-Type": "application/json",
             "Accept": "application/json",
+            "User-Agent": "gusi-lebedi/1.0",
         },
         method="POST",
     )
