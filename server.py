@@ -179,11 +179,18 @@ def resend_send(key: str, sender: str, recipient: str, subject: str, html_body: 
             response.read()
             return {"ok": True}
     except urllib.error.HTTPError as error:
+        raw_body = error.read()
         try:
-            details = json.loads(error.read())
-            message = details.get("message") or details.get("name") or f"Resend ответил {error.code}"
+            details = json.loads(raw_body)
+            if isinstance(details, dict):
+                message = details.get("message") or details.get("name") or f"Resend ответил {error.code}"
+            else:
+                message = f"Resend ответил {error.code}"
         except (json.JSONDecodeError, UnicodeDecodeError):
-            message = f"Resend ответил {error.code}"
+            plain_body = raw_body.decode("utf-8", errors="replace")
+            plain_body = re.sub(r"<[^>]+>", " ", plain_body)
+            plain_body = " ".join(plain_body.split())
+            message = plain_body[:300] or f"Resend ответил {error.code}"
         return {"ok": False, "description": message}
     except Exception as error:  # сеть, DNS, таймаут — письмо не важнее самой заявки
         return {"ok": False, "description": f"Нет связи с Resend: {error}"}
