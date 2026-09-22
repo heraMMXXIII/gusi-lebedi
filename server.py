@@ -150,24 +150,28 @@ def telegram_request(token: str, method: str, payload: dict | None = None) -> di
         return {"ok": False, "description": f"Нет связи с Telegram: {error}"}
 
 
-def brevo_credentials() -> tuple[str, str, str]:
-    key = os.environ.get("GUSI_BREVO_API_KEY", "").strip() or read_setting("brevo_api_key")
-    sender = os.environ.get("GUSI_BREVO_SENDER", "").strip() or read_setting("brevo_sender")
-    recipient = os.environ.get("GUSI_BREVO_RECIPIENT", "").strip() or read_setting("brevo_recipient")
+def resend_credentials() -> tuple[str, str, str]:
+    key = os.environ.get("GUSI_RESEND_API_KEY", "").strip() or read_setting("resend_api_key")
+    sender = os.environ.get("GUSI_RESEND_SENDER", "").strip() or read_setting("resend_sender")
+    recipient = os.environ.get("GUSI_RESEND_RECIPIENT", "").strip() or read_setting("resend_recipient")
     return key, sender, recipient
 
 
-def brevo_send(key: str, sender: str, recipient: str, subject: str, html_body: str) -> dict:
+def resend_send(key: str, sender: str, recipient: str, subject: str, html_body: str) -> dict:
     payload = {
-        "sender": {"name": "Сайт Гуси-Лебеди", "email": sender},
-        "to": [{"email": recipient}],
+        "from": f"Сайт Гуси-Лебеди <{sender}>",
+        "to": [recipient],
         "subject": subject,
-        "htmlContent": html_body,
+        "html": html_body,
     }
     request = urllib.request.Request(
-        "https://api.brevo.com/v3/smtp/email",
+        "https://api.resend.com/emails",
         data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-        headers={"Content-Type": "application/json", "api-key": key, "accept": "application/json"},
+        headers={
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
         method="POST",
     )
     try:
@@ -177,12 +181,12 @@ def brevo_send(key: str, sender: str, recipient: str, subject: str, html_body: s
     except urllib.error.HTTPError as error:
         try:
             details = json.loads(error.read())
-            message = details.get("message") or details.get("code") or f"Brevo ответил {error.code}"
+            message = details.get("message") or details.get("name") or f"Resend ответил {error.code}"
         except (json.JSONDecodeError, UnicodeDecodeError):
-            message = f"Brevo ответил {error.code}"
+            message = f"Resend ответил {error.code}"
         return {"ok": False, "description": message}
     except Exception as error:  # сеть, DNS, таймаут — письмо не важнее самой заявки
-        return {"ok": False, "description": f"Нет связи с Brevo: {error}"}
+        return {"ok": False, "description": f"Нет связи с Resend: {error}"}
 
 
 def build_booking_email(booking: dict) -> str:
@@ -216,7 +220,7 @@ def configured_channels() -> list[str]:
     token, chat_id = telegram_credentials()
     if token and chat_id:
         channels.append("telegram")
-    key, sender, recipient = brevo_credentials()
+    key, sender, recipient = resend_credentials()
     if key and sender and recipient:
         channels.append("email")
     return channels
@@ -238,8 +242,8 @@ def send_telegram_booking(booking: dict) -> str:
 
 
 def send_email_booking(booking: dict) -> str:
-    key, sender, recipient = brevo_credentials()
-    outcome = brevo_send(key, sender, recipient, "Новая заявка с сайта", build_booking_email(booking))
+    key, sender, recipient = resend_credentials()
+    outcome = resend_send(key, sender, recipient, "Новая заявка с сайта", build_booking_email(booking))
     return "ok" if outcome.get("ok") else f"ошибка: {outcome.get('description')}"
 
 
@@ -487,7 +491,7 @@ class WorkshopHandler(SimpleHTTPRequestHandler):
         if path == "/api/admin/email":
             if not self.require_admin_api():
                 return
-            key, sender, recipient = brevo_credentials()
+            key, sender, recipient = resend_credentials()
             self.send_json(
                 HTTPStatus.OK,
                 {
@@ -495,7 +499,7 @@ class WorkshopHandler(SimpleHTTPRequestHandler):
                     "sender": sender,
                     "recipient": recipient,
                     "keyHint": f"…{key[-6:]}" if key else "",
-                    "fromEnvironment": bool(os.environ.get("GUSI_BREVO_API_KEY", "").strip()),
+                    "fromEnvironment": bool(os.environ.get("GUSI_RESEND_API_KEY", "").strip()),
                 },
             )
             return
@@ -802,7 +806,7 @@ class WorkshopHandler(SimpleHTTPRequestHandler):
         if not key or not sender or not recipient:
             self.send_json(
                 HTTPStatus.BAD_REQUEST,
-                {"error": "Нужны ключ Brevo, адрес отправителя и адрес получателя."},
+                {"error": "Нужны ключ Resend, адрес отправителя и адрес получателя."},
             )
             return
         for address, label in ((sender, "отправителя"), (recipient, "получателя")):
@@ -810,7 +814,7 @@ class WorkshopHandler(SimpleHTTPRequestHandler):
                 self.send_json(HTTPStatus.BAD_REQUEST, {"error": f"Адрес {label} выглядит неправильно."})
                 return
 
-        probe = brevo_send(
+        probe = resend_send(
             key,
             sender,
             recipient,
@@ -820,13 +824,13 @@ class WorkshopHandler(SimpleHTTPRequestHandler):
         if not probe.get("ok"):
             self.send_json(
                 HTTPStatus.BAD_REQUEST,
-                {"error": f"Brevo не принял письмо: {probe.get('description', 'неизвестная ошибка')}"},
+                {"error": f"Resend не принял письмо: {probe.get('description', 'неизвестная ошибка')}"},
             )
             return
 
-        write_setting("brevo_api_key", key)
-        write_setting("brevo_sender", sender)
-        write_setting("brevo_recipient", recipient)
+        write_setting("resend_api_key", key)
+        write_setting("resend_sender", sender)
+        write_setting("resend_recipient", recipient)
         self.send_json(HTTPStatus.OK, {"configured": True, "recipient": recipient})
 
     def handle_admin_logout(self) -> None:
